@@ -185,8 +185,8 @@ ddf.ds <-function(model, data, meta.data=list(), control=list(), call,
                     )
 
   # debug - print the initial values
-  if(misc.options$showit>1 && !is.null(initialvalues)){
-    cat("initialvalues=",initialvalues,"\n")
+  if(misc.options$showit>=1 && !is.null(initialvalues)){
+    cat("DEBUG: initial values =",round(initialvalues, 7),"\n")
   }
 
   # Note there is a difference between maxit (the maximum numbr of iterations
@@ -209,8 +209,7 @@ ddf.ds <-function(model, data, meta.data=list(), control=list(), call,
   # if there was no convergence, return the fitting object incase it's useful
   # it won't be of the correct class or have the correct elements
   if(lt$converge!=0 & misc.options$debug){
-    errors("No convergence, not calculating Hessian, predicted values, abundance")
-    errors("Returned object is for debugging ONLY!")
+    warning("No convergence, not calculating Hessian, predicted values, abundance\nReturned object is for debugging ONLY!")
     options(save.options)
     return(result)
   }
@@ -226,14 +225,14 @@ ddf.ds <-function(model, data, meta.data=list(), control=list(), call,
       # the hessian returned from solnp() is not what we want, warn about
       # that and don't return it
       if(misc.options$mono){
-        cat("First partial hessian calculation failed with monotonicity enforced, no hessian\n")
+        warning("First partial hessian calculation failed with monotonicity enforced, no hessian\n")
       }else{
-        cat("First partial hessian calculation failed; using second-partial hessian\n")
+        warning("First partial hessian calculation failed; using second-partial hessian\n")
         result$hessian <- lt$hessian
       }
     }else if(length(lt$par)>1){
       if(class(try(solve(result$hessian),silent=TRUE))=="try-error"){
-        cat("First partial hessian is singular; using second-partial hessian\n")
+        warning("First partial hessian is singular; using second-partial hessian\n")
         result$hessian <- lt$hessian
       }
     }
@@ -263,7 +262,7 @@ ddf.ds <-function(model, data, meta.data=list(), control=list(), call,
   }
 
   if(lt$message == "FALSE CONVERGENCE"){
-    errors("Model fitting did not converge. Try different initial values or different model")
+    warning("Model fitting did not converge. Try different initial values or different model")
   }else{
     result$fitted <- predict(result,esw=FALSE)$fitted
     if(control$estimate){
