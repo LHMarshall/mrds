@@ -30,7 +30,6 @@
 #'   maxiter: maximum iterations used \item refit: if TRUE, detection function
 #'   will be fitted more than once if parameters are at a boundary or when
 #'   convergence is not achieved \item nrefits: number of refittings \item
-#'   parscale: parameter scale values
 #'   \item mono: if TRUE montonicity will be enforced \item
 #'   mono.strict: if TRUE, then strict monotonicity is enforced; otherwise weak
 #'   \item width: radius of point count or half-width of strip \item
@@ -51,33 +50,40 @@ detfct.fit <- function(ddfobj,optim.options,bounds,misc.options){
 
   # keep a history of how the optimisation is doing
   # stores: convergence status (0=GOOD), lnl, pars
-  misc.options$optim.history <- rep(NA,length(getpar(ddfobj))+2)
+  misc.options$optim.history <- rep(NA, length(getpar(ddfobj))+2)
 
   # Count how we're doing...
   iter <- 0
   metaiter <- 0
 
-  # If we have no adjustments then we can just do some straight optimisation.
-  # OR if we have uniform detection function with no adjustments
-  # OR if we're enforcing monotonicity
+  # If we have no adjustments then we can just do the optimisation -- no
+  # complicated stuff. Also if:
+  #  - we have uniform detection function
+  #  - we're enforcing monotonicity
   if(is.null(ddfobj$adjustment) | ddfobj$type=="unif" |
      misc.options$mono | misc.options$nofit){
 
     if(misc.options$mono & ddfobj$type!="unif"){
       ## get best key pars first, not enforcing monotonicity
-      save.mono<-misc.options$mono
-      save.mono.strict<-misc.options$mono.strict
-      misc.options$mono<-FALSE
-      misc.options$mono.strict<-FALSE
-      lt <- detfct.fit.opt(ddfobj,optim.options,bounds,
-                           misc.options,fitting="key")
-      misc.options$mono<-save.mono
-      misc.options$mono.strict<-save.mono.strict
+      save.mono <- misc.options$mono
+      save.mono.strict <- misc.options$mono.strict
+      misc.options$mono <- FALSE
+      misc.options$mono.strict <- FALSE
+      lt <- detfct.fit.opt(ddfobj, optim.options, bounds,
+                           misc.options, fitting="key")
+      misc.options$mono <- save.mono
+      misc.options$mono.strict <- save.mono.strict
       # assign those parameters
-      ddfobj<-assign.par(ddfobj,lt$par)
+      ddfobj <- assign.par(ddfobj, lt$par)
+      # recalculate lower/upper bounds
+      if(check.bounds(lt, bounds$lower, bounds$upper, ddfobj,
+                            showit,bounds$setlower, bounds$setupper)){
+        bounds <- setbounds(rep(NA, length(lt$par)), rep(NA, length(lt$par)),
+                            lt$par, ddfobj)
+      }
     }
 
-    lt <- detfct.fit.opt(ddfobj,optim.options,bounds,misc.options)
+    lt <- detfct.fit.opt(ddfobj, optim.options, bounds, misc.options)
 
   }else{
   # Otherwise we need to play around...
@@ -85,7 +91,7 @@ detfct.fit <- function(ddfobj,optim.options,bounds,misc.options){
     # think this needs to live elsewhere, but let's leave it here for
     # the moment
     if(!is.null(ddfobj$adjustment) && ddfobj$adjustment$series=="herm")
-      ddfobj$adjustment$parameters<-rep(1,length(ddfobj$adjustment$order))
+      ddfobj$adjustment$parameters <- rep(1, length(ddfobj$adjustment$order))
 
     initialvalues <- getpar(ddfobj)
     # This holds the previous values, to test for convergence
